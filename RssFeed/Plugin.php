@@ -63,7 +63,7 @@ class RssFeed_Plugin implements Typecho_Plugin_Interface
         $form->addInput($refreshInterval);
 
         // 多个 RSS/Atom 源
-        $rssUrls = new Typecho_Widget_Helper_Form_Element_Textarea('rssUrls', NULL, '', _t('RSS/Atom源地址列表'), _t('每行输入一个RSS/Atom源地址'));
+        $rssUrls = new Typecho_Widget_Helper_Form_Element_Textarea('rssUrls', NULL, '', _t('RSS/Atom源地址列表'), _t('每行输入一个RSS/Atom源地址，配置完毕后，点击保存，在任意页面引入短代码 [rssfeed]'));
         $form->addInput($rssUrls);
     }
 
