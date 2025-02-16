@@ -2,7 +2,7 @@
 if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 /**
- * RSS/Atom 订阅插件
+ * RSS/Atom 订阅插件 短代码 [rssfeed]
  * 
  * @package RssFeed
  * @author 子夜松声
