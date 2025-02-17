@@ -7,7 +7,7 @@ if (!defined('__TYPECHO_ROOT_DIR__')) exit;
  * @package RssFeed
  * @author 子夜松声
  * @version 1.7
- * @link https://xyzbz.cn/
+ * @link https://xyzbz.cn/archives/1341/
  */
 class RssFeed_Plugin implements Typecho_Plugin_Interface
 {
@@ -65,6 +65,8 @@ class RssFeed_Plugin implements Typecho_Plugin_Interface
         // 多个 RSS/Atom 源
         $rssUrls = new Typecho_Widget_Helper_Form_Element_Textarea('rssUrls', NULL, '', _t('RSS/Atom源地址列表'), _t('每行输入一个RSS/Atom源地址，配置完毕后，点击保存，在任意页面引入短代码 [rssfeed]'));
         $form->addInput($rssUrls);
+        
+        
     }
 
     /**
@@ -126,110 +128,132 @@ class RssFeed_Plugin implements Typecho_Plugin_Interface
         self::logError("缓存已写入，键：{$key}，过期时间：" . date('Y-m-d H:i:s', time() + $expire));
     }
 
-    /**
-     * 获取最新的 RSS/Atom 文章
-     */
-    public static function getLatestRssItems()
-    {
-        $options = Typecho_Widget::widget('Widget_Options');
-        $cacheKey = self::getCacheKey(); // 使用新的缓存键
-        $cacheExpire = $options->plugin('RssFeed')->refreshInterval * 60;
 
-        // 从缓存中获取数据
-        $cachedItems = self::getCache($cacheKey);
-        if ($cachedItems !== null) {
-            return $cachedItems;
-        }
+public static function getLatestRssItems()
+{
+    $options = Typecho_Widget::widget('Widget_Options');
+    $cacheKey = self::getCacheKey(); // 使用新的缓存键
+    $cacheExpire = $options->plugin('RssFeed')->refreshInterval * 60;
 
-        $rssUrls = explode("\n", $options->plugin('RssFeed')->rssUrls);
-        $itemCount = intval($options->plugin('RssFeed')->itemCount);
-
-        if (empty($rssUrls)) {
-            return null;
-        }
-
-        $allItems = [];
-        foreach ($rssUrls as $rssUrl) {
-            $rssUrl = trim($rssUrl);
-            if (empty($rssUrl)) {
-                continue;
-            }
-
-            // 获取 RSS/Atom 内容
-            $rssContent = @file_get_contents($rssUrl);
-            if ($rssContent === false) {
-                self::logError("无法获取 RSS/Atom 内容：{$rssUrl}");
-                continue;
-            }
-
-            $xml = @simplexml_load_string($rssContent);
-            if ($xml === false) {
-                self::logError("无法解析 RSS/Atom 内容：{$rssUrl}");
-                continue;
-            }
-
-            // 提取域名
-            $domain = parse_url($rssUrl, PHP_URL_HOST);
-
-            // 判断是 RSS 还是 Atom
-            if (isset($xml->channel)) {
-                // RSS 格式
-                foreach ($xml->channel->item as $item) {
-                    $pubDate = isset($item->pubDate) ? strtotime((string)$item->pubDate) : time();
-                    $pubDateFormatted = date('Y-m-d H:i:s', $pubDate); // 格式化时间戳
-                    $allItems[] = [
-                        'title' => htmlspecialchars((string)$item->title, ENT_QUOTES, 'UTF-8'),
-                        'link' => htmlspecialchars((string)$item->link, ENT_QUOTES, 'UTF-8'),
-                        'description' => self::truncateDescription((string)$item->description, 200),
-                        'source' => $domain, // 只显示域名
-                        'pubDate' => $pubDateFormatted // 使用格式化后的时间
-                    ];
-                }
-            } elseif (isset($xml->entry)) {
-                // Atom 格式
-                foreach ($xml->entry as $entry) {
-                    $pubDate = isset($entry->updated) ? strtotime((string)$entry->updated) : time();
-                    $pubDateFormatted = date('Y-m-d H:i:s', $pubDate); // 格式化时间戳
-                    $link = '';
-                    if (isset($entry->link['href'])) {
-                        $link = (string)$entry->link['href'];
-                    }
-                    $description = isset($entry->summary) ? (string)$entry->summary : (isset($entry->content) ? (string)$entry->content : '');
-                    $allItems[] = [
-                        'title' => htmlspecialchars((string)$entry->title, ENT_QUOTES, 'UTF-8'),
-                        'link' => htmlspecialchars($link, ENT_QUOTES, 'UTF-8'),
-                        'description' => self::truncateDescription($description, 200),
-                        'source' => $domain, // 只显示域名
-                        'pubDate' => $pubDateFormatted // 使用格式化后的时间
-                    ];
-                }
-            }
-        }
-
-        // 按发布时间排序
-        usort($allItems, function($a, $b) {
-            return strtotime($b['pubDate']) - strtotime($a['pubDate']);
-        });
-
-        // 仅返回最新的文章
-        $latestItems = array_slice($allItems, 0, $itemCount);
-
-        // 缓存结果
-        self::setCache($cacheKey, $latestItems, $cacheExpire);
-
-        return $latestItems;
+    // 从缓存中获取数据
+    $cachedItems = self::getCache($cacheKey);
+    if ($cachedItems !== null) {
+        return $cachedItems;
     }
 
-    /**
-     * 截断文章内容
-     */
-    private static function truncateDescription($description, $length)
-    {
-        if (mb_strlen($description, 'UTF-8') > $length) {
-            $description = mb_substr($description, 0, $length, 'UTF-8') . '...';
-        }
-        return $description;
+    $rssUrls = explode("\n", $options->plugin('RssFeed')->rssUrls);
+    $itemCount = intval($options->plugin('RssFeed')->itemCount);
+
+    if (empty($rssUrls)) {
+        return null;
     }
+
+    $allItems = [];
+    foreach ($rssUrls as $rssUrl) {
+        $rssUrl = trim($rssUrl);
+        if (empty($rssUrl)) {
+            continue;
+        }
+
+        // 获取 RSS/Atom 内容
+        $rssContent = @file_get_contents($rssUrl);
+        if ($rssContent === false) {
+            self::logError("无法获取 RSS/Atom 内容：{$rssUrl}");
+            continue;
+        }
+
+        $xml = @simplexml_load_string($rssContent);
+        if ($xml === false) {
+            self::logError("无法解析 RSS/Atom 内容：{$rssUrl}");
+            continue;
+        }
+
+        // 提取域名
+        $domain = parse_url($rssUrl, PHP_URL_HOST);
+
+        // 判断是 RSS 还是 Atom
+        if (isset($xml->channel)) {
+            // RSS 格式
+            foreach ($xml->channel->item as $item) {
+                $pubDate = isset($item->pubDate) ? strtotime((string)$item->pubDate) : time();
+                $pubDateFormatted = date('Y-m-d H:i:s', $pubDate); // 格式化时间戳
+
+                // 提取作者信息
+                $author = '';
+                if (isset($item->children('dc', true)->creator)) {
+                    $author = (string)$item->children('dc', true)->creator;
+                }
+
+                $allItems[] = [
+                    'title' => htmlspecialchars((string)$item->title, ENT_QUOTES, 'UTF-8'),
+                    'link' => htmlspecialchars((string)$item->link, ENT_QUOTES, 'UTF-8'),
+                    'description' => self::truncateDescription((string)$item->description, 100),
+                    'source' => $domain, // 只显示域名
+                    'pubDate' => $pubDateFormatted, // 使用格式化后的时间
+                    'author' => $author // 添加作者信息
+                ];
+            }
+        } elseif (isset($xml->entry)) {
+            // Atom 格式
+            foreach ($xml->entry as $entry) {
+                $pubDate = isset($entry->updated) ? strtotime((string)$entry->updated) : time();
+                $pubDateFormatted = date('Y-m-d H:i:s', $pubDate); // 格式化时间戳
+
+                $link = '';
+                if (isset($entry->link['href'])) {
+                    $link = (string)$entry->link['href'];
+                }
+                $description = isset($entry->summary) ? (string)$entry->summary : (isset($entry->content) ? (string)$entry->content : '');
+
+                // 提取作者信息
+                $author = '';
+                if (isset($entry->author->name)) {
+                    $author = (string)$entry->author->name;
+                }
+
+                $allItems[] = [
+                    'title' => htmlspecialchars((string)$entry->title, ENT_QUOTES, 'UTF-8'),
+                    'link' => htmlspecialchars($link, ENT_QUOTES, 'UTF-8'),
+                    'description' => self::truncateDescription($description, 100),
+                    'source' => $domain, // 只显示域名
+                    'pubDate' => $pubDateFormatted, // 使用格式化后的时间
+                    'author' => $author // 添加作者信息
+                ];
+            }
+        }
+    }
+
+    // 按发布时间排序
+    usort($allItems, function($a, $b) {
+        return strtotime($b['pubDate']) - strtotime($a['pubDate']);
+    });
+
+    // 仅返回最新的文章
+    $latestItems = array_slice($allItems, 0, $itemCount);
+
+    // 缓存结果
+    self::setCache($cacheKey, $latestItems, $cacheExpire);
+
+    return $latestItems;
+}
+/**
+ * 截断文章内容，并过滤图片链接
+ */
+private static function truncateDescription($description, $length)
+{
+    // 过滤图片链接
+    $description = preg_replace('/<img[^>]+>/i', '', $description);
+
+    // 去除 HTML 标签
+    $description = strip_tags($description);
+
+    // 截断文字
+    if (mb_strlen($description, 'UTF-8') > $length) {
+        $description = mb_substr($description, 0, $length, 'UTF-8') . '...';
+    }
+
+    return $description;
+}
 
     /**
      * 记录错误日志
@@ -257,7 +281,7 @@ public static function render()
 <div class="rss-item">
     <h4><a href="{$item['link']}" target="_blank">{$item['title']}</a></h4>
     <p>{$item['description']}</p>
-    <p><small>(来源): {$item['source']} | (发布时间): {$item['pubDate']}</small></p>
+    <p><small>(来源): {$item['source']} | (发布时间): {$item['pubDate']} | (作者): {$item['author']}</small></p>
 </div>
 HTML;
         }
