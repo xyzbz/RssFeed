@@ -1,5 +1,4 @@
 <?php
-if (!defined('__TYPECHO_ROOT_DIR__')) exit;
 
 /**
  * RSS/Atom 订阅插件 短代码 [rssfeed]
@@ -279,7 +278,7 @@ public static function render()
         foreach ($items as $item) {
             echo <<<HTML
 <div class="rss-item">
-    <h4><a href="{$item['link']}" target="_blank">{$item['title']}</a></h4>
+    <h4><a href="{$item['link']}">{$item['title']}</a></h4>
     <p>{$item['description']}</p>
     <p><small>(来源): {$item['source']} | (发布时间): {$item['pubDate']} | (作者): {$item['author']}</small></p>
 </div>
@@ -294,19 +293,23 @@ HTML;
     /**
      * 解析短代码
      */
-public static function parseShortcode($content, $widget)
+public static function parseShortcode($content, $widget, $lastResult)
 {
-    // 匹配短代码 [rssfeed]
-    if (preg_match('/\[rssfeed\]/', $content)) {
+    $content = empty($lastResult) ? $content : $lastResult;
+    
+    if (strpos($content, '[rssfeed]') !== false) {
         ob_start();
         self::render();
         $rssContent = ob_get_clean();
 
-        // 将 RSS 内容包裹在一个 div 中，避免破坏原有的 HTML 结构
-        $rssContent = '<div class="rss-feed-container">' . $rssContent . '</div>';
+        // 新增代码：手动应用LinkGo转换
+        $processedContent = LinkGo_Plugin::convertLinks(
+            '<div class="rss-feed-container">'.$rssContent.'</div>',
+            $widget,
+            null
+        );
 
-        // 替换短代码
-        $content = str_replace('[rssfeed]', $rssContent, $content);
+        $content = str_replace('[rssfeed]', $processedContent, $content);
     }
     return $content;
 }
